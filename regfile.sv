@@ -5,6 +5,19 @@ module regfile(input  logic        clk,
                output logic [31:0] rd1, rd2);
 
   logic [31:0]     rf[31:0];
+	always @ (posedge clock)
+		begin
+			if(we3)
+				rf[wa3] = wd3>0 ? wd3: 0;
+     		end
+  	always_comb
+    		begin
+			
+			rd1 = ra1>0 ? rf[ra1]: 0;
+			rd2 = ra2>0 ? rf[ra2] : 0;
+    		end
+
+
 
   // three ported register file
   // read two ports combinationally
