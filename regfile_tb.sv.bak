@@ -53,7 +53,7 @@ module stimulus();
 			
 			//test if wd write when bit is 0
 			#10 we3 = 1'b0;
-			wd3 = 32'h5555_5555;
+			wd3 = 32'h1234_5678;
 			
 			//writing the array to a different register
 			#10 wa3 = 5'h2;
@@ -66,7 +66,7 @@ module stimulus();
 			
 			//read updates on positive clk edge
 			#10 wa3 = 5'h2;
-			wd3 = 32'h2525_2525;
+			wd3 = 32'h7777_7777;
 		end
 endmodule //regfile_tb
 
