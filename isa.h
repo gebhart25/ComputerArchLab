@@ -905,16 +905,286 @@ int BL (int imm24) {
   return 0;
 }
 
-int LDR (int p, int w, int Rd, int Rn, int Operand2){
+int LDR (int p, int w, int I, int Rd, int Rn, int Operand2){
+  int sh = (Operand2 & 0x00000060) >> 5;
+  int shamt5 = (Operand2 & 0x00000F80) >> 7;
+  int bit4 = (Operand2 & 0x00000010) >> 4;
+  int Rm = Operand2 & 0x0000000F;
+  if(I=0)
+  {
+    if(p==1 && w==0)
+    {
+      NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + Operand2);
+    }
+    if(p==0 && w==0)
+    {
+        NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn]);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    if(p==0 && w==1)
+    {
+        //do nothing
+        return 0;
+    }
+    if(p==1 && w==1)
+    {
+        NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + Operand2);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
     
+  }
+  if(I=1)
+  {
+    switch (sh) {
+        case 0: op2 = (CURRENT_STATE.REGS[Rm] << shamt5);
+      break;
+        case 1: op2 = (CURRENT_STATE.REGS[Rm] >> shamt5);
+      break;
+        case 2: op2 = (CURRENT_STATE.REGS[Rm] >>> shamt5);
+          break;
+        case 3: op2 = ((CURRENT_STATE.REGS[Rm] >> shamt5) | (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
+      break;
+    } 
+    if(p==1 && w==0)
+    {
+        NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+        return 0;
+    }
+    if(p==0 && w==0)
+    {
+      NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+      Rn = Rn + op2;
+    } 
+    if(p==0 && w==1)
+    {
+      //do nothing
+      return 0;
+    }
+    if(p==1 && w==1)
+    {
+      NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn]);
+      Rn = Rn + op2;
+    }
+    //NEXT_STATE.REGS[Rd] = mem_read_32(op2);
+  }
+
+  return 0;
+ 
 }
 
+int STR (int p, int w, int I, int Rd, int Rn, int Operand2){
+  int sh = (Operand2 & 0x00000060) >> 5;
+  int shamt5 = (Operand2 & 0x00000F80) >> 7;
+  int bit4 = (Operand2 & 0x00000010) >> 4;
+  int Rm = Operand2 & 0x0000000F;
+  if(I=0)
+  {
+    if(p==1 && w==0)
+    {
+      //NEXT_STATE.REGS[Rd] = mem_read_32(Rn + Operand2);
+      mem_write_32(CURRENT_STATE.REGS[Rn]+Operand2,CURRENT_STATE.REGS[Rd],)
+    }
+    if(p==0 && w==0)
+    {
+        //NEXT_STATE.REGS[Rd] = mem_read_32(Rn);
+        mem_write_32(CURRENT_STATE.REGS[Rn],CURRENT_STATE.REGS[Rd],);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    if(p==0 && w==1)
+    {
+        //do nothing
+        return 0;
+    }
+    if(p==1 && w==1)
+    {
+        //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + Operand2);
+        mem_write_32(CURRENT_STATE.REGS[Rn] + Operand2, CURRENT_STATE.REGS[Rd]);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    
+  }
+  if(I=1)
+  {
+    switch (sh) {
+        case 0: op2 = (CURRENT_STATE.REGS[Rm] << shamt5);
+      break;
+        case 1: op2 = (CURRENT_STATE.REGS[Rm] >> shamt5);
+      break;
+        case 2: op2 = (CURRENT_STATE.REGS[Rm] >>> shamt5);
+          break;
+        case 3: op2 = ((CURRENT_STATE.REGS[Rm] >> shamt5) | (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
+      break;
+    } 
+    if(p==1 && w==0)
+    {
+        //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+        mem_write_32(CURRENT_STATE.REGS[Rn] + op2, CURRENT_STATE.REGS[Rd]);
+        return 0;
+    }
+    if(p==0 && w==0)
+    {
+      //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+      mem_write_32(CURRENT_STATE.REGS[Rn] + op2, CURRENT_STATE.REGS[Rd]);
+      Rn = Rn + op2;
+    } 
+    if(p==0 && w==1)
+    {
+      //do nothing
+      return 0;
+    }
+    if(p==1 && w==1)
+    {
+      //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn]);
+      mem_write_32(CURRENT_STATE.REGS[Rn], CURRENT_STATE.REGS[Rd]);
+      Rn = Rn + op2;
+    }
+    //NEXT_STATE.REGS[Rd] = mem_read_32(op2);
+  }
 
-int LDR (char* i_);
-int LDRB (char* i_);
+  return 0;
+ 
+}
+
+int LDRB (int p, int w, int I, int Rd, int Rn, int Operand2){
+  int sh = (Operand2 & 0x00000060) >> 5;
+  int shamt5 = (Operand2 & 0x00000F80) >> 7;
+  int bit4 = (Operand2 & 0x00000010) >> 4;
+  int Rm = Operand2 & 0x0000000F;
+  if(I=0)
+  {
+    if(p==1 && w==0)
+    {
+      NEXT_STATE.REGS[Rd] = 0x000000FF & mem_read_32(CURRENT_STATE.REGS[Rn] + Operand2);
+    }
+    if(p==0 && w==0)
+    {
+        NEXT_STATE.REGS[Rd] = 0x000000FF & mem_read_32(CURRENT_STATE.REGS[Rn]);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    if(p==0 && w==1)
+    {
+        //do nothing
+        return 0;
+    }
+    if(p==1 && w==1)
+    {
+        NEXT_STATE.REGS[Rd] = 0x000000FF & mem_read_32(CURRENT_STATE.REGS[Rn] + Operand2);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    
+  }
+  if(I=1)
+  {
+    switch (sh) {
+        case 0: op2 = (CURRENT_STATE.REGS[Rm] << shamt5);
+      break;
+        case 1: op2 = (CURRENT_STATE.REGS[Rm] >> shamt5);
+      break;
+        case 2: op2 = (CURRENT_STATE.REGS[Rm] >>> shamt5);
+          break;
+        case 3: op2 = ((CURRENT_STATE.REGS[Rm] >> shamt5) | (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
+      break;
+    } 
+    if(p==1 && w==0)
+    {
+        NEXT_STATE.REGS[Rd] = 0x000000FF & mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+        return 0;
+    }
+    if(p==0 && w==0)
+    {
+      NEXT_STATE.REGS[Rd] = 0x000000FF & mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+      Rn = Rn + op2;
+    } 
+    if(p==0 && w==1)
+    {
+      //do nothing
+      return 0;
+    }
+    if(p==1 && w==1)
+    {
+      NEXT_STATE.REGS[Rd] = 0x000000FF mem_read_32(CURRENT_STATE.REGS[Rn]);
+      Rn = Rn + op2;
+    }
+    //NEXT_STATE.REGS[Rd] = mem_read_32(op2);
+  }
+
+  return 0;
+ 
+}
+
+int STRB (int p, int w, int I, int Rd, int Rn, int Operand2){
+  int sh = (Operand2 & 0x00000060) >> 5;
+  int shamt5 = (Operand2 & 0x00000F80) >> 7;
+  int bit4 = (Operand2 & 0x00000010) >> 4;
+  int Rm = Operand2 & 0x0000000F;
+  if(I=0)
+  {
+    if(p==1 && w==0)
+    {
+      //NEXT_STATE.REGS[Rd] = mem_read_32(Rn + Operand2);
+      mem_write_32(CURRENT_STATE.REGS[Rn]+Operand2, 0x000000FF & CURRENT_STATE.REGS[Rd])
+    }
+    if(p==0 && w==0)
+    {
+        //NEXT_STATE.REGS[Rd] = mem_read_32(Rn);
+        mem_write_32(CURRENT_STATE.REGS[Rn], 0x000000FF & CURRENT_STATE.REGS[Rd]);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    if(p==0 && w==1)
+    {
+        //do nothing
+        return 0;
+    }
+    if(p==1 && w==1)
+    {
+        //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + Operand2);
+        mem_write_32(CURRENT_STATE.REGS[Rn] + Operand2,  0x000000FF & CURRENT_STATE.REGS[Rd]);
+        NEXT_STATE.REGS[Rn] = CURRENT_STATE.REGS[Rn] + Operand2;
+    }
+    
+  }
+  if(I=1)
+  {
+    switch (sh) {
+        case 0: op2 = (CURRENT_STATE.REGS[Rm] << shamt5);
+      break;
+        case 1: op2 = (CURRENT_STATE.REGS[Rm] >> shamt5);
+      break;
+        case 2: op2 = (CURRENT_STATE.REGS[Rm] >>> shamt5);
+          break;
+        case 3: op2 = ((CURRENT_STATE.REGS[Rm] >> shamt5) | (CURRENT_STATE.REGS[Rm] << (32 - shamt5)));
+      break;
+    } 
+    if(p==1 && w==0)
+    {
+        //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+        mem_write_32(CURRENT_STATE.REGS[Rn] + op2, 0x000000FF & CURRENT_STATE.REGS[Rd]);
+        return 0;
+    }
+    if(p==0 && w==0)
+    {
+      //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn] + op2);
+      mem_write_32(CURRENT_STATE.REGS[Rn] + op2, 0x000000FF & CURRENT_STATE.REGS[Rd]);
+      Rn = Rn + op2;
+    } 
+    if(p==0 && w==1)
+    {
+      //do nothing
+      return 0;
+    }
+    if(p==1 && w==1)
+    {
+      //NEXT_STATE.REGS[Rd] = mem_read_32(CURRENT_STATE.REGS[Rn]);
+      mem_write_32(CURRENT_STATE.REGS[Rn], 0x000000FF & CURRENT_STATE.REGS[Rd]);
+      Rn = Rn + op2;
+    }
+    //NEXT_STATE.REGS[Rd] = mem_read_32(op2);
+  }
+
+  return 0;
+ 
+}
 //?int ROR (char* i_);
-int STR (char* i_);
-int STRB (char* i_);
 int SWI (char* i_){return 0;}
 
 
