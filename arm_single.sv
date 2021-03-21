@@ -86,7 +86,8 @@ module arm (input  logic        clk, reset,
    logic [3:0] ALUFlags;
    logic       RegWrite, ALUSrc, MemtoReg, PCSrc;
    logic [2:0] RegSrc;   
-   logic [1:0] ImmSrc, ALUControl;
+   logic [1:0] ImmSrc;
+   logic [3:0] ALUControl;
    
    controller c (.clk(clk),
                  .reset(reset),
@@ -127,7 +128,7 @@ module controller (input  logic         clk, reset,
                    output logic         RegWrite,
                    output logic [ 1:0]  ImmSrc,
                    output logic         ALUSrc, 
-                   output logic [ 1:0]  ALUControl,
+                   output logic [ 3:0]  ALUControl,
                    output logic         MemWrite, MemtoReg,
                    output logic         PCSrc,
                    output logic         MemStrobe);
@@ -167,7 +168,8 @@ module decoder (input  logic [1:0] Op,
                 output logic [1:0] FlagW,
                 output logic       PCS, RegW, MemW,
                 output logic       MemtoReg, ALUSrc,
-                output logic [1:0] ImmSrc, ALUControl,
+                output logic [1:0] ImmSrc,
+                output logic [3:0] ALUControl,
                 output logic [2:0] RegSrc,
                 output logic       MemStrobe);
    
@@ -201,20 +203,20 @@ module decoder (input  logic [1:0] Op,
      if (ALUOp)
        begin                 // which DP Instr?
          case(Funct[4:1]) 
-           4'b0100: ALUControl = 4'b0000; // ADD
-           4'b0010: ALUControl = 4'b1000; // SUB
-           4'b0000: ALUControl = 4'b0010; // AND
-           4'b1100: ALUControl = 4'b0011; // ORR
-		   4'b1011: ALUControl = 4'b0000; // CMN
-		   4'b1010: ALUControl = 4'b1000; // CMP
-		   4'b0101: ALUControl = 4'b0100; // ADC
-		   4'b0110: ALUControl = 4'b1100; // SBC
-		   4'b1110: ALUControl = 4'b1010; // BIC
-		   4'b1000: ALUControl = 4'b0010; // TST
-		   4'b1001: ALUControl = 4'b0011; // TEQ
-		   4'b0001: ALUControl = 4'b0001; // XOR
-		   4'b1111: ALUControl = 4'b1001; // MVN
-		   4'b1111: ALUControl = 4'b1001; // Shifts
+            4'b0100: ALUControl = 4'b0000; // ADD
+            4'b0010: ALUControl = 4'b1000; // SUB
+            4'b0000: ALUControl = 4'b0010; // AND
+            4'b1100: ALUControl = 4'b0011; // ORR
+            4'b1011: ALUControl = 4'b0000; // CMN
+            4'b1010: ALUControl = 4'b1000; // CMP
+            4'b0101: ALUControl = 4'b0100; // ADC
+            4'b0110: ALUControl = 4'b1100; // SBC
+            4'b1110: ALUControl = 4'b1010; // BIC
+            4'b1000: ALUControl = 4'b0010; // TST
+            4'b1001: ALUControl = 4'b0011; // TEQ
+            4'b0001: ALUControl = 4'b0001; // XOR
+            4'b1111: ALUControl = 4'b1001; // MVN
+            4'b1111: ALUControl = 4'b1001; // Shifts
 		   
 
            default: ALUControl = 2'bx;  // unimplemented
@@ -306,7 +308,7 @@ module datapath (input  logic        clk, reset,
                  input  logic        RegWrite,
                  input  logic [ 1:0]  ImmSrc,
                  input  logic        ALUSrc,
-                 input  logic [ 1:0]  ALUControl,
+                 input  logic [ 3:0]  ALUControl,
                  input  logic        MemtoReg,
                  input  logic        PCSrc,
                  output logic [ 3:0]  ALUFlags,
@@ -320,6 +322,7 @@ module datapath (input  logic        clk, reset,
    logic [31:0] ExtImm, SrcA, SrcB, Result;
    logic [ 3:0]  RA1, RA2, RA3;
    logic [31:0] RA4;   
+   logic [31:0] outpt;
    
    // next PC logic
    mux2 #(32)  pcmux (.d0(PCPlus4),
@@ -374,7 +377,7 @@ module datapath (input  logic        clk, reset,
                     .ExtImm(ExtImm));
 
    // ALU logic
-   mux2 #(32)  srcbmux (.d0(WriteData),
+   mux2 #(32)  srcbmux (.d0(outpt),
                         .d1(ExtImm),
                         .s(ALUSrc),
                         .y(SrcB));
@@ -385,11 +388,19 @@ module datapath (input  logic        clk, reset,
                     .ALUFlags(ALUFlags));
 
 //TODO: pass correct data into shift
-   shift         shift (.a(SrcA),
+   shift         shft (.shampt5(Instr[11:7]),
+                        .sh(Instr[6:5]),
+                        .rd2(WriteData),
+                        .out(outpt)
+
+
+      
+     
+                    /*.a(SrcA),
                     .b(SrcB),
                     .ALUControl(ALUControl),
                     .Result(ALUResult),
-                    .ALUFlags(ALUFlags));
+                    .ALUFlags(ALUFlags)*/);
 endmodule // datapath
 
 
@@ -476,21 +487,21 @@ module shift (input  logic [4:0] shampt5,
               input logic [31:0] rd2,
               output logic [31:0] out
               );
+always_comb
+  casex(sh) 
+    //logic shift left 
+    2'b00:   out = rd2 << shampt5;  
+    //logic right shift
+    2'b01:   out = rd2 >> shampt5; 
+    //arithmetic shift right
+    2'b10:   out = rd2 >>> shampt5;
+    //ROR
+    2'b11:   out = (rd2 >> shampt5) | (rd2 << (32 - shampt5));
+    default: out = 32'bx;
 
-  case(sh) 
-       //logic shift left 
-       2'b00:   out = rd2 << shampt5;  
-       //logic right shift
-       2'b01:   out = rd2 >> shampt5; 
-       //arithmetic shift right
-       2'b10:   out = rd2 >>> shampt5;
-       //ROR
-       2'b11:   out = (rd2 >> shampt5) | (rd2 << (32 - shampt5));
-       default: out = 32'bx;
+    endcase // case (sh)
 
-     endcase // case (sh)
-
-endmodule // shift
+ // shift
   
 endmodule
 
@@ -504,11 +515,11 @@ module alu (input  logic [31:0] a, b,
    logic [31:0] condinvb;
    logic [32:0] sum;
    
-   assign condinvb = (ALUControl[3] ? (~b + ALUControl[1] ? 0: 1)): b;
+   assign condinvb = (ALUControl[3] ? (~b + (ALUControl[1] ? 0: 1)): b);
    assign sum = a + condinvb + (ALUControl[2] ? (ALUControl[3] ? ~carry : carry) : 0);
 
    always_comb
-     casex (ALUControl[1:0])
+     casex (ALUControl[3:0])
        2'b00:  Result = sum;			//ADD, SUB, CMP, CMN
        2'b10:  Result = a & condinvb;	//AND, BIC, TST		   
        2'b11:  Result = a | condinvb;	//ORR, TEQ
@@ -518,8 +529,8 @@ module alu (input  logic [31:0] a, b,
 
    assign neg      =  Result[31];
    assign zero     = (Result == 32'b0);
-   assign carry    = (ALUControl[1:0] == 2'b00) & sum[32];
-   assign overflow = (ALUControl[1:0] == 2'b00) & 
+   assign carry    = (ALUControl[3:0] == 2'b00) & sum[32];
+   assign overflow = (ALUControl[3:0] == 2'b00) & 
                      (a[31] == condinvb[31]) & 
                      (a[31] ^ sum[31]); 
    assign ALUFlags = {neg, zero, carry, overflow};
