@@ -201,10 +201,21 @@ module decoder (input  logic [1:0] Op,
      if (ALUOp)
        begin                 // which DP Instr?
          case(Funct[4:1]) 
-           4'b0100: ALUControl = 2'b00; // ADD
-           4'b0010: ALUControl = 2'b01; // SUB
-           4'b0000: ALUControl = 2'b10; // AND
-           4'b1100: ALUControl = 2'b11; // ORR
+           4'b0100: ALUControl = 4'b0000; // ADD
+           4'b0010: ALUControl = 4'b1000; // SUB
+           4'b0000: ALUControl = 4'b0010; // AND
+           4'b1100: ALUControl = 4'b0011; // ORR
+		   4'b1011: ALUControl = 4'b0000; // CMN
+		   4'b1010: ALUControl = 4'b1000; // CMP
+		   4'b0101: ALUControl = 4'b0100; // ADC
+		   4'b0110: ALUControl = 4'b1100; // SBC
+		   4'b1110: ALUControl = 4'b1010; // BIC
+		   4'b1000: ALUControl = 4'b0010; // TST
+		   4'b1001: ALUControl = 4'b0011; // TEQ
+		   4'b0001: ALUControl = 4'b0001; // XOR
+		   4'b1111: ALUControl = 4'b1001; // MVN
+		   4'b1111: ALUControl = 4'b1001; // Shifts
+		   
 
            default: ALUControl = 2'bx;  // unimplemented
          endcase
@@ -373,6 +384,7 @@ module datapath (input  logic        clk, reset,
                     .Result(ALUResult),
                     .ALUFlags(ALUFlags));
 
+//TODO: pass correct data into shift
    shift         shift (.a(SrcA),
                     .b(SrcB),
                     .ALUControl(ALUControl),
@@ -484,7 +496,7 @@ endmodule
 
 
 module alu (input  logic [31:0] a, b,
-            input  logic [ 1:0] ALUControl,
+            input  logic [ 3:0] ALUControl,
             output logic [31:0] Result,
             output logic [ 3:0] ALUFlags);
    
@@ -492,22 +504,23 @@ module alu (input  logic [31:0] a, b,
    logic [31:0] condinvb;
    logic [32:0] sum;
    
-   assign condinvb = ALUControl[0] ? ~b : b;
-   assign sum = a + condinvb + ALUControl[0];
+   assign condinvb = (ALUControl[3] ? (~b + ALUControl[1] ? 0: 1)): b;
+   assign sum = a + condinvb + (ALUControl[2] ? (ALUControl[3] ? ~carry : carry) : 0);
 
    always_comb
      casex (ALUControl[1:0])
-       2'b0?:  Result = sum;
-       2'b10:  Result = a & b;
-       2'b11:  Result = a | b;
+       2'b00:  Result = sum;			//ADD, SUB, CMP, CMN
+       2'b10:  Result = a & condinvb;	//AND, BIC, TST		   
+       2'b11:  Result = a | condinvb;	//ORR, TEQ
+	   2'b01:  Result = b;				//XOR, MVM, Shifts, MVN
        default: Result = 32'bx;
      endcase
 
-   assign neg      = Result[31];
+   assign neg      =  Result[31];
    assign zero     = (Result == 32'b0);
-   assign carry    = (ALUControl[1] == 1'b0) & sum[32];
-   assign overflow = (ALUControl[1] == 1'b0) & 
-                     ~(a[31] ^ b[31] ^ ALUControl[0]) & 
+   assign carry    = (ALUControl[1:0] == 2'b00) & sum[32];
+   assign overflow = (ALUControl[1:0] == 2'b00) & 
+                     (a[31] == condinvb[31]) & 
                      (a[31] ^ sum[31]); 
    assign ALUFlags = {neg, zero, carry, overflow};
    
