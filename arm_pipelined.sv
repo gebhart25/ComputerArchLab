@@ -691,13 +691,13 @@ module alu (input  logic [31:0] a, b,
        4'b1000: Result = a - b;//SUB
        4'b0000: Result = a + b;// CMN
        4'b1000: Result = a - b;// CMP
-       4'b0100: Result = a + b + lastCarryFlag; // ADC ???
-       4'b1100: Result = a - b + lastCarryFlag;// SBC ???
-       4'b1010: Result = a & ~b; // BIC ???
+       4'b0100: Result = a + b + lastCarryFlag; // ADC
+       4'b1100: Result = a - b - lastCarryFlag;// SBC
+       4'b1010: Result = a & ~b; // BIC
        4'b0010: Result = a & b; // TST
        4'b0011: Result = a ^ b; // TEQ
        4'b0001: Result = a ^ b; // XOR
-       4'b1001: Result = ~a; // MVN ???
+       4'b1001: Result = ~a; // MVN
        //4'b1001: Result = ; // Shifts
      endcase
 
