@@ -84,7 +84,8 @@ module arm (input  logic        clk, reset,
             input  logic        PCReady);
    
    logic [2:0]  RegSrcD;
-   logic [1:0]  ImmSrcD, ALUControlE;
+   logic [1:0]  ImmSrcD;
+   logic [3:0] ALUControlE;
    logic        ALUSrcE, BranchTakenE, MemtoRegW,
                 PCSrcW, RegWriteW;
    logic [3:0]  ALUFlagsE;
@@ -173,7 +174,7 @@ module controller (input  logic         clk, reset,
                    output logic [2:0]   RegSrcD, 
                    output logic [1:0]   ImmSrcD, 
                    output logic         ALUSrcE, BranchTakenE,
-                   output logic [1:0]   ALUControlE,
+                   output logic [3:0]   ALUControlE,
                    output logic         MemWriteM,
                    output logic         MemtoRegW, PCSrcW, RegWriteW,
                    // hazard interface
@@ -185,7 +186,7 @@ module controller (input  logic         clk, reset,
 
    logic [11:0] controlsD;
    logic        CondExE, ALUOpD;
-   logic [1:0]  ALUControlD;
+   logic [3:0]  ALUControlD;
    logic        ALUSrcD;
    logic        MemtoRegD, MemtoRegM;
    logic        RegWriteD, RegWriteE, RegWriteGatedE;
@@ -258,7 +259,7 @@ module controller (input  logic         clk, reset,
                                 RegWriteD, PCSrcD, MemtoRegD, MemStrobeD}),
                             .q({FlagWriteE, BranchE, MemWriteE, 
                                 RegWriteE, PCSrcE, MemtoRegE, MemStrobeE}));
-   flopenr #(3)  regsE(.clk(clk),
+   flopenr #(5)  regsE(.clk(clk),
                      .reset(reset),
                      .en(MemSysReady),
                      .d({ALUSrcD, ALUControlD}),
@@ -352,7 +353,7 @@ module datapath (input  logic        clk, reset,
                  input  logic [2:0]  RegSrcD,
                  input  logic [1:0]  ImmSrcD,
                  input  logic        ALUSrcE, BranchTakenE,
-                 input  logic [1:0]  ALUControlE, 
+                 input  logic [3:0]  ALUControlE, 
                  input  logic        MemtoRegW, PCSrcW, RegWriteW,
                  output logic [31:0] PCF,
                  input  logic [31:0] InstrF,
@@ -663,7 +664,7 @@ module extend (input  logic [23:0] Instr,
 endmodule // extend
 
 module alu (input  logic [31:0] a, b,
-            input  logic [1:0]  ALUControl,
+            input  logic [3:0]  ALUControl,
             output logic [31:0] Result,
             output logic [3:0]  Flags);
 
@@ -671,11 +672,11 @@ module alu (input  logic [31:0] a, b,
    logic [31:0] condinvb;
    logic [32:0] sum;
    
-   assign condinvb = ALUControl[0] ? ~b : b;
-   assign sum = a + condinvb + ALUControl[0];
+   assign condinvb = (ALUControl[3] ? (~b + (ALUControl[1] ? 0: 1)): b);//ALUControl[0] ? ~b : b;
+   assign sum = a + condinvb + (ALUControl[2] ? (ALUControl[3] ? ~carry : carry) : 0);//a + condinvb + ALUControl[0];
 
    always_comb
-     casex (ALUControl[1:0])
+     casex (ALUControl[3:0])
        2'b0?: Result = sum;
        2'b10: Result = a & b;
        2'b11: Result = a | b;
