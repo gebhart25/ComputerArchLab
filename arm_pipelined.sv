@@ -96,6 +96,7 @@ module arm (input  logic        clk, reset,
    logic        Match_1E_M, Match_1E_W, 
                 Match_2E_M, Match_2E_W, 
                 Match_12D_E;
+   logic [1:0]  lastCarryFlag;
    
    controller c (.clk(clk),
                  .reset(reset),
@@ -115,6 +116,7 @@ module arm (input  logic        clk, reset,
                  .MemtoRegE(MemtoRegE),
                  .PCWrPendingF(PCWrPendingF),
                  .FlushE(FlushE),
+                 .carry(lastCarryFlag),//assign last carry flag
                  .MemStrobeM(MemStrobe),
                  .MemSysReady(PCReady));
    datapath dp (.clk(clk),
@@ -180,6 +182,7 @@ module controller (input  logic         clk, reset,
                    // hazard interface
                    output logic         RegWriteM, MemtoRegE,
                    output logic         PCWrPendingF,
+                   output logic [1:0]   carry,
                    input  logic         FlushE,
                    output logic         MemStrobeM,
                    input  logic         MemSysReady);
@@ -236,15 +239,15 @@ module controller (input  logic         clk, reset,
            4'b0001: ALUControlD = 4'b0001; // XOR
            4'b1111: ALUControlD = 4'b1001; // MVN
            4'b1111: ALUControlD = 4'b1001; // Shifts
-           default: ALUControlD = 2'bx;  // unimplemented
+           default: ALUControlD = 4'bx;  // unimplemented
          endcase
          FlagWriteD[1]   = InstrD[20];   // update N/Z Flags if S bit is set
          FlagWriteD[0]   = InstrD[20] &
-                           (ALUControlD == 2'b00 | ALUControlD == 2'b01);
+                           (ALUControlD == 4'b0000 | ALUControlD == 4'b0001);
        end 
      else 
        begin
-         ALUControlD     = 2'b00;        // perform addition for non-dp instr
+         ALUControlD     = 4'b0000;        // perform addition for non-dp instr
          FlagWriteD      = 2'b00;        // don't update Flags
        end
 
@@ -289,6 +292,8 @@ module controller (input  logic         clk, reset,
    assign PCSrcGatedE     = PCSrcE & CondExE;
    assign MemStrobeGatedE = MemStrobeE & CondExE;
    
+  assign carry = FlagsE[1];
+
    // Memory stage
    flopenr #(5) regsM(.clk(clk),
                     .reset(reset),
@@ -499,6 +504,7 @@ module datapath (input  logic        clk, reset,
    alu         alu (.a(SrcAE),
                     .b(SrcBE),
                     .ALUControl(ALUControlE),
+                    .lastCarryFlag(lastCarryFlag),//pass carry
                     .Result(ALUResultE),
                     .Flags(ALUFlagsE));
    
@@ -665,6 +671,7 @@ endmodule // extend
 
 module alu (input  logic [31:0] a, b,
             input  logic [3:0]  ALUControl,
+            input  logic  lastCarryFlag,
             output logic [31:0] Result,
             output logic [3:0]  Flags);
 
@@ -677,9 +684,21 @@ module alu (input  logic [31:0] a, b,
 
    always_comb
      casex (ALUControl[3:0])
-       2'b0?: Result = sum;
-       2'b10: Result = a & b;
-       2'b11: Result = a | b;
+       4'b000?: Result = sum;
+       4'b1000: Result = a + b;//ADD
+       4'b0010: Result = a & b;//AND
+       4'b0011: Result = a | b;//ORR
+       4'b1000: Result = a - b;//SUB
+       4'b0000: Result = a + b;// CMN
+       4'b1000: Result = a - b;// CMP
+       4'b0100: Result = a + b + lastCarryFlag; // ADC ???
+       4'b1100: Result = a - b + lastCarryFlag;// SBC ???
+       4'b1010: Result = a & ~b; // BIC ???
+       4'b0010: Result = a & b; // TST
+       4'b0011: Result = a ^ b; // TEQ
+       4'b0001: Result = a ^ b; // XOR
+       4'b1001: Result = ~a; // MVN ???
+       //4'b1001: Result = ; // Shifts
      endcase
 
    assign neg      = Result[31];
