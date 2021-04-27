@@ -18,6 +18,13 @@ module CacheControl(input Strobe,
    logic       Ready;   
    logic [7:0]  OutputLogic;
   
+   /*output logic DReady;
+   output logic W;
+   output logic MStrobe;
+   output logic MRW;
+   output logic RSel;
+   output logic WSelc;*/
+
    assign DReady = (ReadyEn & M && V && ~DRW) || Ready;
    assign {LdCtr, ReadyEn, Ready, W, MStrobe, MRW, RSel, WSel} = OutputLogic;
 
@@ -52,12 +59,12 @@ module CacheControl(input Strobe,
    always @(CURRENT_STATE or X)
      begin
  	case(CURRENT_STATE)
-       Idle:	
+      Idle:	
          if (Strobe == 1'b0)
             begin
                LdCtr = 1'b1;
                ReadyEn = 1'b0;
-               Rdy = 1'b0;
+               DReady = 1'b0;
                W = 1'b0;
                MStrobe = 1'b0;
                MRW = 1'b0;
@@ -65,104 +72,244 @@ module CacheControl(input Strobe,
                RSel = 1'b0;
                NEXT_STATE <=  Idle;
             end 
-         else begin
-         //set outputs
-         //set next state
+         else if (Strobe == 1'b1 && DRW == 1)
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  Write;
+            end 
+         else //((Strobe == 1'b1 && DRW == 0))
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  Read;
             end
       Read:	
-         if (/*something*/)
+         if (M == 1'b0 && V == 1'b0)
             begin
-         //set outputs
-         //set next state
+               LdCtr = 1'b1;
+               ReadyEn = 1'b1;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  ReadMiss;
             end 
-         else begin
-         //set outputs
-         //set next state
+         else if (M == 1'b0 && V == 1'b1)
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b1;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  ReadMiss;
+            end 
+         else if (M == 1'b1 && V == 1'b0)
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b1;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  ReadMiss;
+            end 
+         else//(M == 1'b1 && V == 1'b1)
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b1;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  Idle;
             end
       ReadMiss:	
-         if (/*something*/)
-            begin
-         //set outputs
-         //set next state
-            end 
-         else begin
-         //set outputs
-         //set next state
-            end
+         begin
+            LdCtr = 1'b1;
+            ReadyEn = 1'b0;
+            DReady = 1'b0;
+            W = 1'b0;
+            MStrobe = 1'b1;
+            MRW = 1'b0;
+            WSel = 1'b0;
+            RSel = 1'b0;
+            NEXT_STATE <=  ReadMem;
+         end 
       ReadMem:	
-         if (/*something*/)
+         if (CtrSig == 1'b1)
             begin
-         //set outputs
-         //set next state
+               LdCtr = 1'b0;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  ReadData;
             end 
-         else begin
-         //set outputs
-         //set next state
+         else //(CtrSig == 1'b0)
+            begin
+               LdCtr = 1'b0;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  ReadMem;
             end
       ReadData:	
-         if (/*something*/)
-            begin
-         //set outputs
-         //set next state
-            end 
-         else begin
-         //set outputs
-         //set next state
-            end
+         begin
+            LdCtr = 1'b0;
+            ReadyEn = 1'b0;
+            DReady = 1'b1;
+            W = 1'b1;
+            MStrobe = 1'b0;
+            MRW = 1'b1;
+            WSel = 1'b1;
+            RSel = 1'b0;
+            NEXT_STATE <=  ReadData;
+         end
       Write:	
-         if (/*something*/)
+         if (M == 1'b0 && V == 1'b0)
             begin
-         //set outputs
-         //set next state
+               LdCtr = 1'b1;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  WriteMiss;
             end 
-         else begin
-         //set outputs
-         //set next state
-            end
-      WriteHit:	
-         if (/*something*/)
+         else if (M == 1'b0 && V == 1'b1)
             begin
-         //set outputs
-         //set next state
+               LdCtr = 1'b1;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  WriteMiss;
             end 
-         else begin
-         //set outputs
-         //set next state
+         else if (M == 1'b0 && V == 1'b1)
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  WriteMiss;
+            end 
+         else//(M == 1'b1 && V == 1'b1)
+            begin
+               LdCtr = 1'b1;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b0;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  WriteHit;
             end
+         
       WriteMiss:	
-         if (/*something*/)
-            begin
-         //set outputs
-         //set next state
-            end 
-         else begin
-         //set outputs
-         //set next state
-            end
+         begin
+            LdCtr = 1'b1;
+            ReadyEn = 1'b0;
+            DReady = 1'b0;
+            W = 1'b0;
+            MStrobe = 1'b1;
+            MRW = 1'b1;
+            WSel = 1'b0;
+            RSel = 1'b0;
+            NEXT_STATE <=  WriteMem;
+         end
+         
+      WriteHit:	
+         begin
+            LdCtr = 1'b1;
+            ReadyEn = 1'b0;
+            DReady = 1'b0;
+            W = 1'b0;
+            MStrobe = 1'b1;
+            MRW = 1'b1;
+            WSel = 1'b0;
+            RSel = 1'b0;
+            NEXT_STATE <=  WriteMem;
+         end
+
       WriteMem:	
-         if (/*something*/)
+         if (CtrSig == 1'b1)
             begin
-         //set outputs
-         //set next state
+               LdCtr = 1'b0;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b1;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  WriteData;
             end 
-         else begin
-         //set outputs
-         //set next state
+         else //(CtrSig == 1'b1)
+            begin
+               LdCtr = 1'b0;
+               ReadyEn = 1'b0;
+               DReady = 1'b0;
+               W = 1'b0;
+               MStrobe = 1'b0;
+               MRW = 1'b1;
+               WSel = 1'b0;
+               RSel = 1'b0;
+               NEXT_STATE <=  WriteMem;
             end
       WriteData:	
-         if (/*something*/)
-            begin
-         //set outputs
-         //set next state
-            end 
-         else begin
-         //set outputs
-         //set next state
-            end
+         begin
+            LdCtr = 1'b0;
+            ReadyEn = 1'b0;
+            DReady = 1'b1;
+            W = 1'b1;
+            MStrobe = 1'b0;
+            MRW = 1'b1;
+            WSel = 1'b0;
+            RSel = 1'b1;
+            NEXT_STATE <=  Idle;
+         end 
 	  default: 
 	    begin
-	       NEXT_STATE <=  S0;
-	       Z = 1'b0;	     
+	       NEXT_STATE <=  Idle;
 	    end
 	  
 	endcase // case (CURRENT_STATE)	
@@ -188,6 +335,6 @@ endmodule // fsm
 
 
 
-endmodule /* Control */
+//endmodule /* Control */
 
 
